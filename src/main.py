@@ -10,29 +10,7 @@ from one_hot import OneHotEncodeTransform
 from sklearn.model_selection import train_test_split
 
 
-'''
-1 -> for check up
-2 -> loss type: mse
-3 -> loss type: huber
-4 -> another trial using | loss type: huber
-5 -> another trial with outout channel = 4
-6 -> changed Unet model
-
-but this error -> batch  size = 32
-RuntimeError: CUDA out of memory.
-Tried to allocate 758.00 MiB (GPU 0; 7.80 GiB total capacity; 6.09 GiB already allocated; 498.44 MiB free; 6.14 GiB reserved in total by PyTorch) 
-If reserved memory is >> allocated memory try setting max_split_size_mb to avoid fragmentation. 
-See documentation for Memory Management and PYTORCH_CUDA_ALLOC_CONF
-
-batch size = 16
-RuntimeError: CUDA out of memory. 
-Tried to allocate 758.00 MiB (GPU 0; 7.80 GiB total capacity; 6.09 GiB already allocated; 508.44 MiB free; 6.13 GiB reserved in total by PyTorch) 
-If reserved memory is >> allocated memory try setting max_split_size_mb to avoid fragmentation.  
-See documentation for Memory Management and PYTORCH_CUDA_ALLOC_CONF
-'''
-
 # Hyperparameters
-count = 6
 epochs = 80
 loss_type = 'huber' # option -> 'l1'. 'l2', 'huber'
 betas = np.linspace(1e-4, 0.02, 1000).tolist()
@@ -42,7 +20,7 @@ print(f"GPU operation: {device}")
 
 # Model, optimizer, and loss function
 input_dim = 4  # DNA sequence one-hot encoded dimension
-unet = UNet1D(input_dim, 4).to(device)
+unet = SimpleUNet(input_dim, 32).to(device)
 ddpm = DDPM(betas, unet).to(device)
 optimizer = torch.optim.Adam(ddpm.parameters(), lr=1e-4)
 
@@ -108,7 +86,7 @@ for epoch in range(epochs):
     print(f"Epoch {epoch + 1}, Train Loss: {train_loss:.4f} | Validation Loss: {val_loss:.4f}")
 
 # write generated DNA sequences
-write_path = os.path.join('SYNTHETIC_dataset', f'synthetic_{count}.txt')
+write_path = os.path.join('SYNTHETIC_dataset', f'synthetic_dataset.txt')
 util = Utils(ddpm, device)
 generated_sequences = util.seq_to_file(num_sequences=len(train_dataset), seq_length=402, file=write_path)
 
@@ -125,6 +103,20 @@ checkpoint = torch.load(ddpm_model_path)
 # Load DDPM state dict
 ddpm.load_state_dict(checkpoint['ddpm_state_dict'])
 
+# Make test loader if using different dataset for testing
+output_file_path = os.path.join('SYNTHETIC_dataset', 'SPC_acceptor_TRTR_pos.txt')
+
+with open(output_file_path, 'r') as file:
+    lines = file.readlines()
+    
+df1 = pd.DataFrame(lines, columns=['DNA_sequence'])
+df = df1.replace('\n', '', regex=True)  # Remove newline characters from the entire DataFrame
+
+# Extract sequences and labels
+sequences = df['DNA_sequence'].tolist()
+
+test_dataset = DNADataset(sequences, transform=onehot_transform)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
 # Generate predictions
-output_file_path = os.path.join('SYNTHETIC_dataset', f'synthetic_test_{count}.txt')
 predictions = util.generate_predictions(test_loader, output_file_path)

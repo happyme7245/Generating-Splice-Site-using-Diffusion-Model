@@ -2,7 +2,8 @@
 #### IRTP project in RC4 related to creating Arabidopsis thaliana DNA sequences with correct splice site using Diffusion Model 
 
 **Used model**: Diffusion Denoising Probabilistic Model (DDPM)
-Generate synthetic DNA sequences using Diffusion Model trained with real dataset.\n
+Generate synthetic DNA sequences using Diffusion Model trained with real dataset.
+
 **Dataset overview**:
 **Species**: Arabidopsis thaliana
 
